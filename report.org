@@ -59,6 +59,7 @@ ignore <- c( "hour",
 vars <- setdiff(names(ds), ignore)
 inputs <- setdiff(vars, target)
 form <- formula(paste(target, "~ ."))
+nobs <- nrow(ds)
 train <- sample(nobs, 0.7*nobs)
 test <- setdiff(seq_len(nobs), train)
 actual <- ds[test, target]
@@ -66,6 +67,7 @@ data <- ds[train,vars]
 #+END_SRC
 
 #+RESULTS:
+
 
 Here is the structure of the data after data pre-processing.
 
@@ -117,7 +119,7 @@ table(ds$app_category)
       141        1
 #+END_SRC
 
-* Classification using SVM
+* SVM
 
 First we can use the =tune= function to determine our constants in using SVM.
 
@@ -158,5 +160,49 @@ print(tab)
 
 #+RESULTS:
 
+* Naïve Bayes
+#+BEGIN_SRC R
+library(e1071) 
+classifier <- naiveBayes(data[train, vars], data[train, target]) 
+table(predict(classifier, data[test, vars]), data[test, target])
 
+       0   1
+   0 861   5
+   1  15 178
+#+END_SRC
 
+#+RESULTS:
+:
+
+* kNN
+#+BEGIN_SRC R
+library(RWeka)
+classifier <- IBk(form, data = data)
+summary(classifier)
+
+=== Summary ===
+
+Correctly Classified Instances        2924               83.5429 %
+Incorrectly Classified Instances       576               16.4571 %
+Kappa statistic                          0.1616
+Mean absolute error                      0.2525
+Root mean squared error                  0.3612
+Relative absolute error                 88.7097 %
+Root relative squared error             95.7834 %
+Coverage of cases (0.95 level)          99.2    %
+Mean rel. region size (0.95 level)      87.9143 %
+Total Number of Instances             3500     
+
+=== Confusion Matrix ===
+
+    a    b   <-- classified as
+ 2846   53 |    a = 0
+  523   78 |    b = 1
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+
+#+end_example
+
+* Conclusion

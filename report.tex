@@ -1,4 +1,4 @@
-% Created 2015-01-21 Wed 10:42
+% Created 2015-01-21 Wed 15:20
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -222,7 +222,19 @@ Total Number of Instances             3500
   546   55 |    b = 1
 \end{minted}
 
-\section{Conclusion}
+\section{Decision Tree}
 \label{sec-5}
+\begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
+library(party)
+bank_ctree <- ctree(form , data=data)
+table(predict(bank_ctree) , data$click)
+
+        0    1
+   0 2899  601
+   1    0    0
+\end{minted}
+
+\section{Conclusion}
+\label{sec-6}
 % Emacs 24.4.1 (Org mode 8.2.10)
 \end{document}

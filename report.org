@@ -177,32 +177,33 @@ table(predict(classifier, data[test, vars]), data[test, target])
 * kNN
 #+BEGIN_SRC R
 library(RWeka)
-classifier <- IBk(form, data = data)
-summary(classifier)
+classifier <- IBk(form, data = data, control = Weka_control(K = 2, X = TRUE))
+evaluate_Weka_classifier(classifier, numFolds = 10)
+
+=== 10 Fold Cross Validation ===
 
 === Summary ===
 
-Correctly Classified Instances        2924               83.5429 %
-Incorrectly Classified Instances       576               16.4571 %
-Kappa statistic                          0.1616
-Mean absolute error                      0.2525
-Root mean squared error                  0.3612
-Relative absolute error                 88.7097 %
-Root relative squared error             95.7834 %
-Coverage of cases (0.95 level)          99.2    %
-Mean rel. region size (0.95 level)      87.9143 %
+Correctly Classified Instances        2866               81.8857 %
+Incorrectly Classified Instances       634               18.1143 %
+Kappa statistic                          0.0876
+Mean absolute error                      0.2578
+Root mean squared error                  0.379 
+Relative absolute error                 90.5826 %
+Root relative squared error            100.4847 %
+Coverage of cases (0.95 level)          96.9429 %
+Mean rel. region size (0.95 level)      85.3143 %
 Total Number of Instances             3500     
 
 === Confusion Matrix ===
 
     a    b   <-- classified as
- 2846   53 |    a = 0
-  523   78 |    b = 1
+ 2811   88 |    a = 0
+  546   55 |    b = 1
 #+END_SRC
 
 #+RESULTS:
 #+begin_example
-
 #+end_example
 
 * Conclusion

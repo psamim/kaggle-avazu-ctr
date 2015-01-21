@@ -1,4 +1,4 @@
-% Created 2015-01-21 Wed 15:20
+% Created 2015-01-21 Wed 15:21
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -226,8 +226,8 @@ Total Number of Instances             3500
 \label{sec-5}
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
 library(party)
-bank_ctree <- ctree(form , data=data)
-table(predict(bank_ctree) , data$click)
+ctree <- ctree(form , data=data)
+table(predict(ctree) , data$click)
 
         0    1
    0 2899  601

@@ -209,8 +209,8 @@ Total Number of Instances             3500
 * Decision Tree
 #+BEGIN_SRC R
 library(party)
-bank_ctree <- ctree(form , data=data)
-table(predict(bank_ctree) , data$click)
+ctree <- ctree(form , data=data)
+table(predict(ctree) , data$click)
 
         0    1
    0 2899  601

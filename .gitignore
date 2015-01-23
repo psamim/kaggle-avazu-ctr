@@ -1,2 +1,12 @@
-/.Rhistory
-/report.blg
+# Ignore everything
+*
+
+# But not these files...
+!.gitignore
+!*.org
+!*.tex
+!*.pdf
+
+# ...even if they are in subdirectories
+!*/
+

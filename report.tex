@@ -1,4 +1,4 @@
-% Created 2015-01-21 Wed 15:21
+% Created 2015-01-23 Fri 11:09
 \documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -34,8 +34,13 @@
 \begin{document}
 
 \maketitle
+\begin{abstract}
+In this report we tried to find a model to fit the Kaggle competition for Avazu Click-Through rate prediction.
+First we explain how to load the data and what attributes to choose for building models. Then we built a number of
+models and evaluated them. In the end we found that the Naïve Bayes is the best model that fits our data.
+\end{abstract}
 
-\section{Data Pre-processing}
+\section{Loading data into R}
 \label{sec-1}
 We took the first 5000 records of the original data as a CSV file and read it into
 R.
@@ -56,32 +61,34 @@ summary(ds$hour)
 : 14100000 14100000 14100000 14100000 14100000 14100000
 \end{minted}
 
-It makes sense that \texttt{id}, \texttt{site\_id}, \texttt{site\_domain} and \texttt{device\_model} do not give any 
-useful information. Also \texttt{device\_ip} has so many different values.
+So we decided that this is not good portion of data and all of our models may be
+wrong or inaccurate. So we took first four million records of data using \texttt{ff} package
+of R. It took about half an hour to load the data.
 
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
-str(ds$device_ip)
-
-:  Factor w/ 4016 levels "0007786f","000dcf99",..: 3451 2361 2824 ...
+library(ff)
+table <- read.csv.ffdf(file = 'train.csv', nrows = 4000000)
+ds <- data.frame(table)
 \end{minted}
 
+Some of the models were so heavy that our computers could not
+use them with so many records of data. Therefore some models were
+evaluated using the 5000-records data, and some were
+evaluated using the 4-million data.
+
+\section{GBM}
+\label{sec-2}
+We used \emph{Gradient Boosting} to build a sense of how important
+each attribute is so that we can ignore it in our models. Before using gradient
+boosting we ignore \texttt{device\_ip} and \texttt{id}, as we concluded that they
+are not relevant to the target variable. This model were evaluated
+using the 5000-record data.
+
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
-str(ds$device_model)
-
-:  Factor w/ 841 levels "00b08597","00b1f3a7",..: 232 353 432 ...
-\end{minted}
-
-
-So we ignored these attributes and created the test and train datasets.
-
-\begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
-ignore <- c( "hour", 
-             "id",
-             "site_id",
-             "site_domain",
-             "device_ip", 
-             "device_id", 
-             "device_model") # Coloumns to ignore
+ignore <- c(
+    "id",
+    "device_ip",
+    ) # Coloumns to ignore
 vars <- setdiff(names(ds), ignore)
 inputs <- setdiff(vars, target)
 form <- formula(paste(target, "~ ."))
@@ -92,30 +99,83 @@ actual <- ds[test, target]
 data <- ds[train,vars]
 \end{minted}
 
+Then we build our model by using \texttt{gbm} package.
+
+\begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
+library(gbm)
+GBM_model = gbm(form,data = data,n.trees = 10000,distribution = "gaussian", cv.folds=2)
+summary(GBM_model)
+
+                              var      rel.inf
+device_model         device_model 91.112123429
+site_id                   site_id  5.990171556
+C14                           C14  2.014844931
+device_id               device_id  0.871112833
+site_domain           site_domain  0.006012711
+app_id                     app_id  0.005734540
+C1                             C1  0.000000000
+banner_pos             banner_pos  0.000000000
+site_category       site_category  0.000000000
+app_domain             app_domain  0.000000000
+app_category         app_category  0.000000000
+device_type           device_type  0.000000000
+device_conn_type device_conn_type  0.000000000
+C15                           C15  0.000000000
+C16                           C16  0.000000000
+C17                           C17  0.000000000
+C18                           C18  0.000000000
+C19                           C19  0.000000000
+C20                           C20  0.000000000
+C21                           C21  0.000000000
+\end{minted}
+
+\section{Data Pre-processing}
+\label{sec-3}
+By looking at how important each attribute is, we decided to ignore 
+less important attributes to make the models more accurate.
+
+\begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
+ignore <- c(
+    "hour", 
+    "id",
+    "device_ip",
+    "C1",
+    "banner_pos",
+    "site_category",
+    "app_domain",
+    "app_category",
+    "device_type",
+    "device_conn_type",
+    "C15",
+    "C16",
+    "C17",
+    "C18",
+    "C19",
+    "C20",
+    "C21"
+    ) # Coloumns to ignore
+vars <- setdiff(names(ds), ignore)
+inputs <- setdiff(vars, target)
+form <- formula(paste(target, "~ ."))
+nobs <- nrow(ds)
+train <- sample(nobs, 0.7*nobs)
+test <- setdiff(seq_len(nobs), train)
+actual <- ds[test, target]
+data <- ds[train,vars]
+\end{minted}
 
 Here is the structure of the data after data pre-processing.
 
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
 str(data)
 
-'data.frame':   3500 obs. of  17 variables:
-$ click           : Factor w/ 2 levels "0","1": 2 1 2 1 1 1 1 1 2 2 ...
-$ C1              : Factor w/ 5 levels "1001","1002",..: 3 3 3 3 3 3 3 ...
-$ banner_pos      : Factor w/ 3 levels "0","1","4": 2 2 1 1 1 1 1 1 1 2 ...
-$ site_category   : Factor w/ 14 levels "0569f928","110ab22d",..: 13 ...
-$ app_id          : Factor w/ 210 levels "00848fac","03528b27",..: 197 19 ...
-$ app_domain      : Factor w/ 22 levels "0654b444","18eb4e75",..: 10 10 ...
-$ app_category    : Factor w/ 10 levels "07d7df22","09481d60",..: 1 1 1 ...
-$ device_type     : Factor w/ 4 levels "0","1","4","5": 2 2 2 2 2 2 ...
-$ device_conn_type: Factor w/ 4 levels "0","2","3","5": 1 1 1 2 1 1 ...
-$ C14             : Factor w/ 216 levels "375","377","380",..: 71 47 ...
-$ C15             : Factor w/ 4 levels "216","300","320",..: 3 3 3 3 ...
-$ C16             : Factor w/ 5 levels "36","50","90",..: 2 2 2 2 ...
-$ C17             : Factor w/ 104 levels "112","122","153",..: 42 26 5...
-$ C18             : Factor w/ 4 levels "0","1","2","3": 3 1 3 4 1 1 ...
-$ C19             : Factor w/ 32 levels "35","39","41",..: 2 1 2 2 ...
-$ C20             : Factor w/ 91 levels "-1","100000",..: 1 1 1 1 3...
-$ C21             : Factor w/ 28 levels "13","15","16",..: 3 16 6 5 1...
+ $ click       : Factor w/ 2 levels "0","1": 2 1 1 1 1 1 2 2 1 1 ...
+ $ site_id     : Factor w/ 276 levels "02d5151c","030440fe",..: 32 150 32 
+ $ site_domain : Factor w/ 234 levels "00e1b9c0","0150cc3e",..: 222 188 22
+ $ app_id      : Factor w/ 210 levels "00848fac","03528b27",..: 197 39 197
+ $ device_id   : Factor w/ 574 levels "004270bf","017c59a6",..: 395 26 395
+ $ device_model: Factor w/ 841 levels "00b08597","00b1f3a7",..: 353 563 10
+ $ C14         : Factor w/ 216 levels "375","377","380",..: 52 193 47 110
 \end{minted}
 
 Let us explore our data a little.
@@ -144,8 +204,8 @@ table(ds$app_category)
 \end{minted}
 
 \section{SVM}
-\label{sec-2}
-
+\label{sec-4}
+This model were evaluated using the 5000-record data.
 First we can use the \texttt{tune} function to determine our constants in using SVM.
 
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
@@ -177,24 +237,50 @@ print(tab)
 
      true
  pred    0    1
-    0 1244  256
-    1    0    0
+    0 1244  256 a b
+    1    0    0 c d
 \end{minted}
 
+These are the results of confusion matrix, which shows that
+this model has high accuracy but very low precision, so makes
+the model not ideal.
+
+$$TP = d / (c+d) = 0$$
+$$FP = b / (a+b) = 256 / 1244 + 256 = 0.17$$
+$$TN = a / (a+b) = 0$$
+$$FN = c / (c+d) = 0$$
+$$AC=(a+d)/(a+b+c+d) = 1244 / 1244+256 = 0.82$$
+$$P = d / (b+d) = 0$$
+
 \section{Naïve Bayes}
-\label{sec-3}
+\label{sec-5}
+This model were evaluated using the 4-million-record data.
+
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
 library(e1071) 
 classifier <- naiveBayes(data[train, vars], data[train, target]) 
 table(predict(classifier, data[test, vars]), data[test, target])
 
-       0   1
-   0 861   5
-   1  15 178
+         0      1
+  0 693115    308   a b
+  1    953 145381   c d
 \end{minted}
 
+These are the results of confusion matrix, which shows that
+this model high accuracy and can be accepted. It has
+both high precision and accuracy together.
+
+$$TP = d / (c+d) = 145381 / 146334  = 0.99348$$
+$$FP = b / (a+b) = 308 / 693423 = 0.00044$$
+$$TN = a / (a+b) = 693115 / 693423 = 0.99955$$
+$$FN = c / (c+d) = 953 / 146334 = 0.00651$$
+$$AC=(a+d)/(a+b+c+d) = 838496 / 839757 = 0.99849$$
+$$P = d / (b+d) = 145381 / 145689 = 0.99788 $$
+
 \section{kNN}
-\label{sec-4}
+\label{sec-6}
+This model were evaluated using the 5000-record data.
+
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
 library(RWeka)
 classifier <- IBk(form, data = data, control = Weka_control(K = 2, X = TRUE))
@@ -222,19 +308,55 @@ Total Number of Instances             3500
   546   55 |    b = 1
 \end{minted}
 
+
+These are the results of confusion matrix. It has good
+accuracy but a low precision.
+
+$$TP = d / (c+d) = 55 / (546 + 55) = 0.09$$
+$$FP = b / (a+b) = 88/(2811+88)=0.3$$
+$$TN = a / (a+b) = 2811/(2811+88)=0.96$$
+$$FN = c / (c+d) = 546/(546+55)=0.90$$
+$$AC=(a+d)/(a+b+c+d) = (2811+55) / (2811+88+546+55) = 0.81$$
+$$P = d / (b+d) = 55 / (88 + 55) = 0.38$$
+
 \section{Decision Tree}
-\label{sec-5}
+\label{sec-7}
+This model were evaluated using the 5000-record data.
+
 \begin{minted}[frame=leftline,fontsize=\scriptsize,bgcolor=bg,stepnumber=2,mathescape=true,linenos=true]{r}
 library(party)
 ctree <- ctree(form , data=data)
 table(predict(ctree) , data$click)
 
         0    1
-   0 2899  601
-   1    0    0
+   0 2899  601 a b
+   1    0    0 c d
 \end{minted}
 
+These are the results of confusion matrix. It has a some how
+good accuracy but a very low precision.
+
+$$TP = d / (c+d) =  0$$
+$$FP = b / (a+b) = 601 / (2899+601) = 0.17$$
+$$TN = a / (a+b) = 2899 / (2899+601)=0.82 $$
+$$FN = c / (c+d) = 0$$
+$$AC=(a+d)/(a+b+c+d) = (2899+0)/(2899+601)=0.82$$
+$$P = d / (b+d) = 0$$
+
+\section{Loss Function}
+\label{sec-8}
+As Kaggle wanted, all the models and prediction should be evaluated against
+the logarithmic loss function. After building our models we found out
+that Kaggle wanted the prediction for every click as a probability. To be able to
+have probabilities we should see our target variable as a numerical variable. But unfortunately
+we built our data and model using our target variable as a binary variable. So we cannot 
+calculate the logarithmic loss of our models.
+
 \section{Conclusion}
-\label{sec-6}
+\label{sec-9}
+The best model in these models were the Naïve Bayes model.
+We choose this model as the best model based on its high accuracy and 
+precision together. And also because of its good time costs of algorithms 
+as we were able to build the model using our four-million-record data.
 % Emacs 24.4.1 (Org mode 8.2.10)
 \end{document}

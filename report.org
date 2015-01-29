@@ -18,8 +18,20 @@ R.
 
 #+BEGIN_SRC R
 ds = read.csv("new_train.csv")
+#+END_SRC
+
+Here we correct data types
+and set train and test data sets as discussed.
+
+#+BEGIN_SRC R
 ds[] <- lapply(ds, factor)
+## Correcting click values
+ds$click <- as.integer(ds$click)
+ds[ds$click==1,c('click')] <- 0
+ds[ds$click==2,c('click')] <- 1
 target <- "click"
+train <- c(1:4000)
+test <- c(4001:5000)
 #+END_SRC
 
 #+RESULTS:
@@ -34,20 +46,11 @@ summary(ds$hour)
 : 14100000 14100000 14100000 14100000 14100000 14100000
 #+END_SRC
 
-So we decided that this is not good portion of data and all of our models may be
-wrong or inaccurate. So we took first four million records of data using =ff= package
-of R. It took about half an hour to load the data.
+#+RESULTS:
+: 14102100 
+:     5000
 
-#+BEGIN_SRC R
-library(ff)
-table <- read.csv.ffdf(file = 'train.csv', nrows = 4000000)
-ds <- data.frame(table)
-#+END_SRC
-
-Some of the models were so heavy that our computers could not
-use them with so many records of data. Therefore some models were
-evaluated using the 5000-records data, and some were
-evaluated using the 4-million data.
+Therefore we decided to ignore =hour= attribute.
 
 * GBM
 We used /Gradient Boosting/ to build a sense of how important
@@ -59,47 +62,81 @@ using the 5000-record data.
 #+BEGIN_SRC R
 ignore <- c(
     "id",
-    "device_ip",
+    "device_ip"
     ) # Coloumns to ignore
 vars <- setdiff(names(ds), ignore)
 inputs <- setdiff(vars, target)
 form <- formula(paste(target, "~ ."))
-nobs <- nrow(ds)
-train <- sample(nobs, 0.7*nobs)
-test <- setdiff(seq_len(nobs), train)
 actual <- ds[test, target]
 data <- ds[train,vars]
 #+END_SRC
+
+#+RESULTS:
 
 Then we build our model by using =gbm= package.
 
 #+BEGIN_SRC R
 library(gbm)
-GBM_model = gbm(form,data = data,n.trees = 10000,distribution = "gaussian", cv.folds=2)
+GBM_model = gbm(
+    form,data = data,
+    n.trees = 10000, 
+    distribution = "gaussian",
+    cv.folds=2
+    )
 summary(GBM_model)
 
-                              var      rel.inf
-device_model         device_model 91.112123429
-site_id                   site_id  5.990171556
-C14                           C14  2.014844931
-device_id               device_id  0.871112833
-site_domain           site_domain  0.006012711
-app_id                     app_id  0.005734540
-C1                             C1  0.000000000
-banner_pos             banner_pos  0.000000000
-site_category       site_category  0.000000000
-app_domain             app_domain  0.000000000
-app_category         app_category  0.000000000
-device_type           device_type  0.000000000
-device_conn_type device_conn_type  0.000000000
-C15                           C15  0.000000000
-C16                           C16  0.000000000
-C17                           C17  0.000000000
-C18                           C18  0.000000000
-C19                           C19  0.000000000
-C20                           C20  0.000000000
-C21                           C21  0.000000000
+                              var     rel.inf
+device_model         device_model 89.97205133
+site_id                   site_id  5.73691195
+C14                           C14  3.44807999
+device_id               device_id  0.82271347
+site_domain           site_domain  0.02024326
+hour                         hour  0.00000000
+C1                             C1  0.00000000
+banner_pos             banner_pos  0.00000000
+site_category       site_category  0.00000000
+app_id                     app_id  0.00000000
+app_domain             app_domain  0.00000000
+app_category         app_category  0.00000000
+device_type           device_type  0.00000000
+device_conn_type device_conn_type  0.00000000
+C15                           C15  0.00000000
+C16                           C16  0.00000000
+C17                           C17  0.00000000
+C18                           C18  0.00000000
+C19                           C19  0.00000000
+C20                           C20  0.00000000
+C21                           C21  0.00000000
 #+END_SRC
+
+#+RESULTS:
+#+begin_example
+ Warning message:
+In gbm.fit(x, y, offset = offset, distribution = distribution, w = w,  :
+  variable 1: hour has no variation.
+                              var     rel.inf
+device_model         device_model 89.97205133
+site_id                   site_id  5.73691195
+C14                           C14  3.44807999
+device_id               device_id  0.82271347
+site_domain           site_domain  0.02024326
+hour                         hour  0.00000000
+C1                             C1  0.00000000
+banner_pos             banner_pos  0.00000000
+site_category       site_category  0.00000000
+app_id                     app_id  0.00000000
+app_domain             app_domain  0.00000000
+app_category         app_category  0.00000000
+device_type           device_type  0.00000000
+device_conn_type device_conn_type  0.00000000
+C15                           C15  0.00000000
+C16                           C16  0.00000000
+C17                           C17  0.00000000
+C18                           C18  0.00000000
+C19                           C19  0.00000000
+C20                           C20  0.00000000
+C21                           C21  0.00000000
+#+end_example
 
 * Data Pre-processing
 By looking at how important each attribute is, we decided to ignore 
@@ -128,9 +165,6 @@ ignore <- c(
 vars <- setdiff(names(ds), ignore)
 inputs <- setdiff(vars, target)
 form <- formula(paste(target, "~ ."))
-nobs <- nrow(ds)
-train <- sample(nobs, 0.7*nobs)
-test <- setdiff(seq_len(nobs), train)
 actual <- ds[test, target]
 data <- ds[train,vars]
 #+END_SRC
@@ -142,14 +176,25 @@ Here is the structure of the data after data pre-processing.
 #+BEGIN_SRC R
 str(data)
 
- $ click       : Factor w/ 2 levels "0","1": 2 1 1 1 1 1 2 2 1 1 ...
- $ site_id     : Factor w/ 276 levels "02d5151c","030440fe",..: 32 150 32 
- $ site_domain : Factor w/ 234 levels "00e1b9c0","0150cc3e",..: 222 188 22
- $ app_id      : Factor w/ 210 levels "00848fac","03528b27",..: 197 39 197
- $ device_id   : Factor w/ 574 levels "004270bf","017c59a6",..: 395 26 395
- $ device_model: Factor w/ 841 levels "00b08597","00b1f3a7",..: 353 563 10
- $ C14         : Factor w/ 216 levels "375","377","380",..: 52 193 47 110 
+'data.frame':	3500 obs. of  7 variables:
+ $ click       : num  0 1 0 0 1 0 0 1 0 0 ...
+ $ site_id     : Factor w/ 276 levels "02d5151c","030440fe",..: 32 32 153 ...
+ $ site_domain : Factor w/ 234 levels "00e1b9c0","0150cc3e",..: 222 222 194 ...
+ $ app_id      : Factor w/ 210 levels "00848fac","03528b27",..: 197 197 197 ...
+ $ device_id   : Factor w/ 574 levels "004270bf","017c59a6",..: 395 395 395 ...
+ $ device_model: Factor w/ 841 levels "00b08597","00b1f3a7",..: 315 394 17 ...
+ $ C14         : Factor w/ 216 levels "375","377","380",..: 53 50 56 51 82 ...
 #+END_SRC
+
+#+RESULTS:
+: 'data.frame':	3500 obs. of  7 variables:
+:  $ click       : num  0 1 0 0 1 0 0 1 0 0 ...
+:  $ site_id     : Factor w/ 276 levels "02d5151c","030440fe",..: 32 32 153 150 164 238 157 32 32 150 ...
+:  $ site_domain : Factor w/ 234 levels "00e1b9c0","0150cc3e",..: 222 222 194 188 113 112 199 222 222 188 ...
+:  $ app_id      : Factor w/ 210 levels "00848fac","03528b27",..: 197 197 197 39 197 197 197 197 197 210 ...
+:  $ device_id   : Factor w/ 574 levels "004270bf","017c59a6",..: 395 395 395 68 395 395 124 395 395 377 ...
+:  $ device_model: Factor w/ 841 levels "00b08597","00b1f3a7",..: 315 394 17 261 415 123 429 712 202 789 ...
+:  $ C14         : Factor w/ 216 levels "375","377","380",..: 53 50 56 51 82 149 54 53 49 198 ...
 
 Let us explore our data a little.
 Displaying distribution of data based on site_category for all data and clicked data. 
@@ -176,8 +221,39 @@ table(ds$app_category)
       141        1
 #+END_SRC
 
+* Loss Function
+As Kaggle wanted, all the models and prediction should be evaluated against
+the logarithmic loss function. 
+
+After building our models we found out
+that Kaggle wanted the prediction for every click as a probability. To be able to
+have probabilities we should see our target variable as a numerical variable. But unfortunately
+we built our data and model using our target variable as a binary variable. 
+So we at first could not
+calculate the logarithmic loss of our models. But
+later we changed our models and used the =click= variable
+as integer and predicted the probabilities of clicking
+for each record.
+
+This functions computes the logarithmic loss between two vectors.
+It gets the vector of actual values and vector of
+predicted values and returns the 
+logarithmic loss between the actual and prediction vectors.
+
+#+BEGIN_SRC R
+## From http://git.io/FrTR
+LogLoss <- function(actual, prediction) {
+    epsilon <- .000000000000001
+    yhat <- pmin(pmax(prediction, epsilon), 1-epsilon)
+    logloss <- -mean(actual*log(yhat)
+                    + (1-actual)*log(1 - yhat))
+    return(logloss)
+}
+#+END_SRC
+
+#+RESULTS:
+
 * SVM
-This model were evaluated using the 5000-record data.
 First we can use the =tune= function to determine our constants in using SVM.
 
 #+BEGIN_SRC R
@@ -185,13 +261,13 @@ library(e1071)
 tuned <- tune.svm(form, data = data, gamma = 10^(-6:-1), cost = 10^(1:2))
 summary(tuned)
 
-Parameter tuning of ‘svm’:
+## Parameter tuning of ‘svm’:
 
-- sampling method: 10-fold cross validation 
+## - sampling method: 10-fold cross validation 
 
-- best parameters:
- gamma cost
- 1e-06   10
+## - best parameters:
+##  gamma cost
+##  1e-06   10
 #+END_SRC
 
 #+RESULTS:
@@ -200,105 +276,78 @@ Using the constants above we can train our model.
 
 #+BEGIN_SRC R 
 model  <- svm(form, data = data, gamma = 10^(-6:-1), cost = 10)
+svmPred <- predict(model, ds[test,vars], type="raw")
+svmPredVector <- unname(svmPred[as.character(test)])
+#+END_SRC
+
+Here is the logarithmic loss of this model.
+Using LogLoss function we get:
+
+#+BEGIN_SRC R
+LogLoss(actual,svmPredVector)
+
+: [1] 0.5206339
+#+END_SRC
+#+RESULTS:
+
+* Naïve Bayes
+#+BEGIN_SRC R
+library(e1071) 
+classifier <- naiveBayes(form, data=data)
+predicted <- predict(classifier, ds[test, vars],type = "raw")
+head(predicted[,2])
+
+ [1] 0.003989185 0.016763740 0.005266338 0.337754577 0.189222685 0.210940868
 #+END_SRC
 
 #+RESULTS:
+: [1] 0.003989185 0.016763740 0.005266338 0.337754577 0.189222685 0.210940868
+: Error: unexpected '[' in " ["
 
-Here is the confusion matrix of our model
-
-#+BEGIN_SRC R
-svmPred <- predict(model, ds[test,vars])
-tab <- table(pred = svmPred, true = ds[test,target])
-print(tab)
-
-     true
- pred    0    1
-    0 1244  256 a b
-    1    0    0 c d
-#+END_SRC
-
-These are the results of confusion matrix, which shows that
-this model has high accuracy but very low precision, so makes
-the model not ideal.
-
-$$TP = d / (c+d) = 0$$
-$$FP = b / (a+b) = 256 / 1244 + 256 = 0.17$$
-$$TN = a / (a+b) = 0$$
-$$FN = c / (c+d) = 0$$
-$$AC=(a+d)/(a+b+c+d) = 1244 / 1244+256 = 0.82$$
-$$P = d / (b+d) = 0$$
-
-* Naïve Bayes
-This model were evaluated using the 4-million-record data.
+Here is the logarithmic loss of this model.
+Using LogLoss function we get:
 
 #+BEGIN_SRC R
-library(e1071) 
-classifier <- naiveBayes(data[train, vars], data[train, target]) 
-table(predict(classifier, data[test, vars]), data[test, target])
-  
-       0       1
-  0 1748706     659
-  1    1451  348648
+LogLoss(actual,predicted[,2])
+
+: [1] 0.5724103
 #+END_SRC
-
-These are the results of confusion matrix, which shows that
-this model high accuracy and can be accepted. It has
-both high precision and accuracy together.
-
-$$TP = d / (c+d) = 145381 / 146334  = 0.99348$$
-$$FP = b / (a+b) = 308 / 693423 = 0.00044$$
-$$TN = a / (a+b) = 693115 / 693423 = 0.99955$$
-$$FN = c / (c+d) = 953 / 146334 = 0.00651$$
-$$AC=(a+d)/(a+b+c+d) = 838496 / 839757 = 0.99849$$
-$$P = d / (b+d) = 145381 / 145689 = 0.99788 $$
 
 * kNN
-This model were evaluated using the 5000-record data.
-
 #+BEGIN_SRC R
 library(RWeka)
 classifier <- IBk(form, data = data, control = Weka_control(K = 2, X = TRUE))
 evaluate_Weka_classifier(classifier, numFolds = 10)
 
+=== Summary ===
+
+Correlation coefficient                  0.168 
+Mean absolute error                      0.2574
+Root mean squared error                  0.3948
+Relative absolute error                 91.8172 %
+Root relative squared error            105.4324 %
+Total Number of Instances             4000
+#+END_SRC
+
+This model's error is too high.
+
+#+RESULTS:
+#+begin_example
 === 10 Fold Cross Validation ===
 
 === Summary ===
 
-Correctly Classified Instances        2866               81.8857 %
-Incorrectly Classified Instances       634               18.1143 %
-Kappa statistic                          0.0876
-Mean absolute error                      0.2578
-Root mean squared error                  0.379 
-Relative absolute error                 90.5826 %
-Root relative squared error            100.4847 %
-Coverage of cases (0.95 level)          96.9429 %
-Mean rel. region size (0.95 level)      85.3143 %
-Total Number of Instances             3500     
-
-=== Confusion Matrix ===
-
-    a    b   <-- classified as
- 2811   88 |    a = 0
-  546   55 |    b = 1
-#+END_SRC
-
-
-These are the results of confusion matrix. It has good
-accuracy but a low precision.
-
-$$TP = d / (c+d) = 55 / (546 + 55) = 0.09$$
-$$FP = b / (a+b) = 88/(2811+88)=0.3$$
-$$TN = a / (a+b) = 2811/(2811+88)=0.96$$
-$$FN = c / (c+d) = 546/(546+55)=0.90$$
-$$AC=(a+d)/(a+b+c+d) = (2811+55) / (2811+88+546+55) = 0.81$$
-$$P = d / (b+d) = 55 / (88 + 55) = 0.38$$
-
-#+RESULTS:
-#+begin_example
+Correlation coefficient                  0.168 
+Mean absolute error                      0.2574
+Root mean squared error                  0.3948
+Relative absolute error                 91.8172 %
+Root relative squared error            105.4324 %
+Total Number of Instances             4000
 #+end_example
 
 * Decision Tree
-This model were evaluated using the 5000-record data.
+This model were evaluated using the 5000-record data and
+click given as factor.
 
 #+BEGIN_SRC R
 library(party)
@@ -320,16 +369,96 @@ $$FN = c / (c+d) = 0$$
 $$AC=(a+d)/(a+b+c+d) = (2899+0)/(2899+601)=0.82$$
 $$P = d / (b+d) = 0$$
 
-* Loss Function
-As Kaggle wanted, all the models and prediction should be evaluated against
-the logarithmic loss function. After building our models we found out
-that Kaggle wanted the prediction for every click as a probability. To be able to
-have probabilities we should see our target variable as a numerical variable. But unfortunately
-we built our data and model using our target variable as a binary variable. So we cannot 
-calculate the logarithmic loss of our models.
+* Loading More Data (4 Million Records)
+We decided that this is not good portion of data and all of our models may be
+wrong or inaccurate. So we took first four million records of data using =ff= package
+of R. It took about half an hour to load the data.
+
+#+BEGIN_SRC R
+library(ff)
+table <- read.csv.ffdf(file = 'train.csv', nrows = 4000000)
+ds <- data.frame(table)
+nobs <- nrow(ds)
+train <- sample(nobs, 0.7*nobs)
+test <- setdiff(seq_len(nobs), train)
+#+END_SRC
+
+#+RESULTS:
+#+begin_example
+Loading required package: bit
+Attaching package bit
+package:bit (c) 2008-2012 Jens Oehlschlaegel (GPL-2)
+creators: bit bitwhich
+coercion: as.logical as.integer as.bit as.bitwhich which
+operator: ! & | xor != ==
+querying: print length any all min max range sum summary
+bit access: length<- [ [<- [[ [[<-
+for more help type ?bit
+
+Attaching package: ‘bit’
+
+The following object is masked from ‘package:base’:
+
+    xor
+
+Attaching package ff
+- getOption("fftempdir")=="/tmp/samim/Rtmp2kRNrM"
+
+- getOption("ffextension")=="ff"
+
+- getOption("ffdrop")==TRUE
+
+- getOption("fffinonexit")==TRUE
+
+- getOption("ffpagesize")==65536
+
+- getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
+
+- getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
+
+- getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
+
+
+Attaching package: ‘ff’
+
+The following objects are masked from ‘package:bit’:
+
+    clone, clone.default, clone.list
+
+The following objects are masked from ‘package:utils’:
+
+    write.csv, write.csv2
+
+The following objects are masked from ‘package:base’:
+
+    is.factor, is.ordered
+#+end_example
+
+Some of the models were so heavy that our computers could not
+use them with so many records of data. Therefore some models were
+evaluated using the 5000-records data, and some were
+evaluated using the 4-million data.
+
+We re-evaluated the Naïve Bayes model using this data, by
+taking 70% of the data as our train data set.
+
+#+BEGIN_SRC R
+library(e1071) 
+classifier <- naiveBayes(form, data=data)
+predicted <- predict(classifier, ds[test, vars], type = "raw")
+#+END_SRC
+
+Here is the logarithmic loss of this model.
+Using LogLoss function we get:
+
+#+BEGIN_SRC R
+LogLoss(actual,predicted[,2])
+
+#+END_SRC
 
 * Conclusion
 The best model in these models were the Naïve Bayes model.
 We choose this model as the best model based on its high accuracy and 
 precision together. And also because of its good time costs of algorithms 
 as we were able to build the model using our four-million-record data.
+

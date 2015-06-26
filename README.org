@@ -402,21 +402,21 @@ The following object is masked from ‘package:base’:
     xor
 
 Attaching package ff
-- getOption("fftempdir")=="/tmp/samim/Rtmp2kRNrM"
+ getOption("fftempdir")=="/tmp/samim/Rtmp2kRNrM"
 
-- getOption("ffextension")=="ff"
+ getOption("ffextension")=="ff"
 
-- getOption("ffdrop")==TRUE
+ getOption("ffdrop")==TRUE
 
-- getOption("fffinonexit")==TRUE
+ getOption("fffinonexit")==TRUE
 
-- getOption("ffpagesize")==65536
+ getOption("ffpagesize")==65536
 
-- getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
+ getOption("ffcaching")=="mmnoflush"  -- consider "ffeachflush" if your system stalls on large writes
 
-- getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
+ getOption("ffbatchbytes")==16777216 -- consider a different value for tuning your system
 
-- getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
+ getOption("ffmaxbytes")==536870912 -- consider a different value for tuning your system
 
 
 Attaching package: ‘ff’
